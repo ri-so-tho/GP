@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: int_order_line_totals
+    description: >
+      One row per line item with options aggregated and the full monetary
+      line total computed. The canonical model for any analysis requiring
+      "what did one item + its modifiers cost?".
+
+      Key logic:
+        - Options joined on (order_id, lineitem_id) — not order_id alone —
+          to prevent cartesian fan-out.
+        - Options pre-aggregated before the join so one row per line item
+          is preserved.
+        - line_total = item_revenue + total_option_revenue (COALESCE-safe).
+    columns:
+      - name: lineitem_id
+        description: Primary key.
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        tests:
+          - not_null
+      - name: line_total
+        description: Full economic value of the line item including options.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "line_total >= 0"
+              name: int_order_line_totals__line_total_non_negative
+      - name: total_option_revenue
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_option_revenue >= 0"

@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: stg_order_items
+    description: >
+      Cleaned and standardised order line items. Filters out ghost rows
+      (null lineitem_id, zero quantity), development-app traffic, and
+      implausibly large orders. One row per line item.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lineitem_id
+        description: Primary key. Unique identifier for a line item.
+        data_type: varchar
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: Foreign key to the order.
+        data_type: varchar
+        tests:
+          - not_null
+      - name: created_at
+        description: Timestamp the order was created (UTC).
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: is_loyalty
+        data_type: boolean
+        tests:
+          - not_null
+      - name: item_price
+        data_type: float
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "item_price >= 0"
+      - name: item_quantity
+        data_type: integer
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "item_quantity > 0"
+      - name: item_revenue
+        description: item_price * item_quantity. Excludes option revenue.
+        data_type: float
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "item_revenue >= 0"
+
+  - name: stg_order_item_options
+    description: >
+      Deduplicated order item options. Exact duplicate rows (from
+      double-submission bugs in the ordering app) are removed via
+      QUALIFY ROW_NUMBER() = 1.
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+      - name: lineitem_id
+        tests:
+          - not_null
+      - name: option_price
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "option_price >= 0"
+      - name: option_quantity
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "option_quantity > 0"

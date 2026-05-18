@@ -1,0 +1,72 @@
+version: 2
+
+sources:
+  - name: alltown
+    description: >
+      Raw operational data from the Alltown Fresh mobile ordering platform.
+      Loaded via the ETL pipeline into the raw schema. All downstream models
+      should reference staging models, never these tables directly.
+    schema: raw
+    freshness:
+      warn_after: { count: 24, period: hour }
+      error_after: { count: 48, period: hour }
+    loaded_at_field: creation_time_utc
+
+    tables:
+      - name: order_items
+        description: One row per line item per order. Contains customer, restaurant, and item attributes.
+        columns:
+          - name: order_id
+            description: Unique identifier for an order.
+            tests:
+              - not_null
+          - name: lineitem_id
+            description: Unique identifier for a line item within an order.
+            tests:
+              - not_null  # the one NULL row is a ghost record; ETL should reject it upstream
+          - name: item_quantity
+            description: Number of units ordered.
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "item_quantity > 0"
+                  name: order_items__item_quantity_positive
+          - name: item_price
+            description: Unit price at time of order in the order's currency.
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "item_price >= 0"
+                  name: order_items__item_price_non_negative
+          - name: is_loyalty
+            tests:
+              - not_null
+              - accepted_values:
+                  values: [true, false]
+          - name: currency
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['USD']
+
+      - name: order_item_options
+        description: One row per modifier/option selected for a line item. May contain exact duplicate rows due to double-submission bugs.
+        columns:
+          - name: order_id
+            tests:
+              - not_null
+          - name: lineitem_id
+            tests:
+              - not_null
+          - name: option_price
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "option_price >= 0"
+                  name: order_item_options__option_price_non_negative
+          - name: option_quantity
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "option_quantity > 0"
+                  name: order_item_options__option_quantity_positive

@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  - name: mart_loyalty_customer_metrics
+    description: >
+      One row per loyalty customer. Primary mart for customer-level loyalty
+      analytics, CRM exports, and segmentation dashboards.
+
+      Grain: one row per user_id (loyalty members with a resolvable user_id only).
+
+      Segmentation dimensions:
+        - customer_segment: Champion / Loyal / Regular / Returning / One-Time
+          based on total lifetime order count.
+        - recency_status: Active / At Risk / Lapsing / Churned based on days
+          since last order.
+
+      Excluded:
+        - 28 loyalty orders where user_id is null (unattributable).
+        - Development-app traffic.
+        - Ghost rows (zero-quantity, null lineitem).
+        - Implausibly large orders (qty > 200 or unit price > $500).
+
+      Monthly spend trends are intentionally not included here to avoid
+      row fan-out; see mart_loyalty_monthly_trends.
+    config:
+      materialized: table
+      tags: ['loyalty', 'mart', 'daily']
+    columns:
+      - name: user_id
+        description: Primary key. Loyalty customer identifier.
+        tests:
+          - unique
+          - not_null
+      - name: printed_card_number
+        description: Physical loyalty card number. Null for app-only members.
+      - name: customer_segment
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Champion', 'Loyal', 'Regular', 'Returning', 'One-Time']
+      - name: recency_status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Active', 'At Risk', 'Lapsing', 'Churned']
+      - name: total_orders
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_orders >= 1"
+      - name: unique_locations
+        description: >
+          Number of distinct restaurants the customer has ordered from.
+          Fixed from original: original query grouped by restaurant_id,
+          making this always = 1.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "unique_locations >= 1"
+      - name: lifetime_spend
+        description: Total spend including item prices and option upcharges.
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "lifetime_spend > 0"
+      - name: avg_order_value
+        tests:
+          - not_null
+      - name: avg_days_between_orders
+        description: >
+          Average days between visits. Null for One-Time customers (only
+          one order, so no interval can be computed).
+      - name: first_order_at
+        tests:
+          - not_null
+      - name: last_order_at
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "last_order_at >= first_order_at"
+              name: mart_loyalty__last_order_not_before_first_order

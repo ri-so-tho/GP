@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: mart_loyalty_monthly_trends
+    description: >
+      One row per loyalty customer per calendar month. Tracks monthly order
+      volume, spend, and month-over-month delta. Intentionally separate from
+      mart_loyalty_customer_metrics to maintain the one-row-per-customer grain
+      in that mart.
+    config:
+      materialized: table
+      tags: ['loyalty', 'mart', 'daily']
+    columns:
+      - name: user_id
+        tests:
+          - not_null
+      - name: order_month
+        tests:
+          - not_null
+      - name: monthly_orders
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "monthly_orders >= 1"
+      - name: monthly_spend
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "monthly_spend >= 0"

@@ -2,7 +2,6 @@
 --
 -- Validates that customer_segment labels are consistent with
 -- the total_orders thresholds defined in mart_loyalty_customer_metrics.
--- Catches any drift if thresholds are edited without updating the CASE logic.
 
 select
     user_id,

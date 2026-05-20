@@ -1,9 +1,7 @@
 -- tests/assert_line_total_matches_components.sql
 --
 -- Validates that line_total = item_revenue + total_option_revenue
--- within a $0.01 floating-point tolerance.
--- Catches any drift in the join or aggregation logic in int_order_line_totals.
--- Returns rows (failures) where the arithmetic doesn't hold.
+-- within a $0.01 floating-point tolerance
 
 select
     lineitem_id,

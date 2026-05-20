@@ -1,8 +1,6 @@
 -- tests/assert_no_orphan_options.sql
 --
--- Options should only exist for known line items.
--- Flags referential integrity gaps between the two source tables.
--- Returns rows (failures) for any unmatched options.
+-- Options should only exist for known line items - flags referential integrity gaps between the two source tables.
  
 select
     o.order_id,

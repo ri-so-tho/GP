@@ -2,8 +2,6 @@
 --
 -- Validates that lifetime_spend in the customer mart equals the
 -- sum of monthly_spend in the trends mart for every user.
--- A mismatch means the two models have diverged in their filter
--- logic or aggregation.
 
 select
     cm.user_id,
